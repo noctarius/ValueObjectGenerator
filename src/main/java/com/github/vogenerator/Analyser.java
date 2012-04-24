@@ -171,6 +171,13 @@ public class Analyser {
 					propertyEntity.setAssignmentEntity(analyseLiteral(literal, typeId));
 				}
 			}
+		} else {
+			Node<?> memberBindingNode = ParseTreeUtils.findNodeByLabel(node, "MemberBinding");
+			if (memberBindingNode != null) {
+				Node<?> bindingIdentifierNode = ParseTreeUtils.findNodeByLabel(node, "Identifier");
+				String bindingIdentifier = ParseTreeUtils.getNodeText(bindingIdentifierNode, ast.inputBuffer).trim();
+				propertyEntity.setBoundProperty(bindingIdentifier);
+			}
 		}
 
 		Node<V> commentNode = ParseTreeUtils.findNodeByLabel(node, "DocumentingComment");

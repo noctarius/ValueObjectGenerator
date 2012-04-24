@@ -8,6 +8,7 @@ public class PropertyEntity implements Comparable<PropertyEntity> {
 	private boolean readOnly;
 	private AssignmentEntity assignmentEntity;
 	private CommentEntity commentEntity;
+	private String boundProperty;
 
 	public String getIdentifier() {
 		return identifier;
@@ -61,11 +62,19 @@ public class PropertyEntity implements Comparable<PropertyEntity> {
 		this.commentEntity = commentEntity;
 	}
 
+	public String getBoundProperty() {
+		return boundProperty;
+	}
+
+	public void setBoundProperty(String boundProperty) {
+		this.boundProperty = boundProperty;
+	}
+
 	@Override
 	public String toString() {
 		return "PropertyEntity [identifier=" + identifier + ", typeId=" + typeId + ", transmissionType="
 				+ transmissionType + ", readOnly=" + readOnly + ", assignmentEntity=" + assignmentEntity
-				+ ", commentEntity=" + commentEntity + "]";
+				+ ", commentEntity=" + commentEntity + "boundProperty=" + boundProperty + "]";
 	}
 
 	public int compareTo(PropertyEntity o) {

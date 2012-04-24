@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,20 +31,43 @@ import com.github.vogenerator.objects.PrototypeEntity;
 public class Generator {
 
 	public static void main(String[] args) throws IOException {
-		TypeManager typeManager = new TypeManager();
-
-		if (args.length < 5) {
-			System.out.println("java -jar generator.jar [PATH] [OUTPATH] [EXT] [TEMPLATE] [TYPEDEFINITION]");
+		if (args.length < 4) {
+			System.out.println("java -jar generator.jar [DSLPATH] [BASEOUTPATH] [OUTPATH] [DEFINITIONFOLDER]");
 			System.exit(1);
 		}
 
-		String path = args[0];
-		String outPath = args[1];
-		String extension = args[2];
-		String templateName = args[3];
-		String typeDefName = args[4];
+		File dslPath = new File(args[0]);
+		File baseOutPath = new File(args[1]);
+		File typeOutPath = new File(args[2]);
+		File definitionFolder = new File(args[3]);
 
-		InputStream types = new FileInputStream(new File(typeDefName));
+		if (!definitionFolder.exists()) {
+			System.out.println("Definition folder does not exists");
+			System.exit(2);
+		}
+
+		if (!dslPath.exists()) {
+			System.out.println("Folder / File with DSL definitions does not exists");
+			System.exit(3);
+		}
+
+		new Generator(dslPath, baseOutPath, typeOutPath, definitionFolder);
+	}
+
+	public Generator(File dslPath, File baseOutPath, File typeOutPath, File definitionFolder) throws IOException {
+		TypeManager typeManager = new TypeManager();
+
+		File generatorProperties = new File(definitionFolder, "generator.properties");
+
+		Properties generator = new Properties();
+		generator.load(new FileReader(generatorProperties));
+
+		String baseTemplateName = generator.getProperty("basetemplate");
+		String typeTemplateName = generator.getProperty("typetemplate");
+		String typeDefName = generator.getProperty("types");
+		String extension = generator.getProperty("extension");
+
+		InputStream types = new FileInputStream(new File(definitionFolder, typeDefName));
 		LineNumberReader reader = new LineNumberReader(new InputStreamReader(types));
 		String line = null;
 		while ((line = reader.readLine()) != null) {
@@ -52,45 +76,66 @@ public class Generator {
 		}
 
 		Parser parser = Parboiled.createParser(Parser.class);
-		List<PackageEntity> packageEntities = recursiveWalkPath(new File(path), parser, typeManager);
+		List<PackageEntity> packageEntities = recursiveWalkPath(dslPath, parser, typeManager);
 		if (packageEntities == null) {
 			return;
 		}
-		writeEntities(packageEntities, templateName, outPath, extension, typeManager);
+
+		writeEntities(packageEntities, definitionFolder, baseTemplateName, typeTemplateName, baseOutPath, typeOutPath,
+				extension, typeManager);
 	}
 
-	private static void writeEntities(List<PackageEntity> packageEntities, String templateName, String outPath,
-			String extension, TypeManager typeManager) throws IOException {
+	private void writeEntities(List<PackageEntity> packageEntities, File definitionFolder, String baseTemplateName,
+			String typeTemplateName, File baseOutPath, File typeOutPath, String extension, TypeManager typeManager)
+			throws IOException {
 
 		InputStream stream = Generator.class.getClassLoader().getResourceAsStream("velocity.properties");
 		Properties properties = new Properties();
 		properties.load(stream);
 		VelocityEngine engine = new VelocityEngine();
-		File templateFile = new File(templateName);
-		properties.put("file.resource.loader.path", templateFile.getParentFile().getAbsolutePath());
+		properties.put("file.resource.loader.path", definitionFolder.getAbsolutePath());
 		engine.init(properties);
-		Template template = engine.getTemplate(templateFile.getName(), "UTF-8");
 
-		File targetFolder = new File(outPath);
-		targetFolder.mkdirs();
+		File baseTemplateFile = new File(baseTemplateName);
+		Template baseTemplate = engine.getTemplate(baseTemplateFile.getName(), "UTF-8");
+
+		File typeTemplateFile = new File(typeTemplateName);
+		Template typeTemplate = engine.getTemplate(typeTemplateFile.getName(), "UTF-8");
+
+		baseOutPath.mkdirs();
+		typeOutPath.mkdirs();
 
 		for (PackageEntity packageEntity : packageEntities) {
 			System.out.println("Writing package: " + packageEntity.getIdentifier());
-			File packageFolder = new File(targetFolder, packageEntity.getIdentifier().replace(".", "/"));
-			packageFolder.mkdirs();
+
+			File basePackageFolder = new File(baseOutPath, packageEntity.getIdentifier().replace(".", "/"));
+			basePackageFolder.mkdirs();
+
+			File typePackageFolder = new File(typeOutPath, packageEntity.getIdentifier().replace(".", "/"));
+			typePackageFolder.mkdirs();
 
 			for (PrototypeEntity entity : packageEntity.getEntities()) {
-				System.out.println("Writing class: " + entity.getPackageName() + "." + entity.getIdentifier());
 				VelocityContext context = new VelocityContext();
 				context.put("entity", entity);
 				context.put("typeManager", typeManager);
 				context.put("support", new Support());
 
-				File outputFile = new File(packageFolder, entity.getIdentifier() + "." + extension);
+				System.out.println("Writing baseclass: " + entity.getPackageName() + ".Base" + entity.getIdentifier());
+				File outputFile = new File(basePackageFolder, entity.getIdentifier() + "." + extension);
 				FileOutputStream out = new FileOutputStream(outputFile);
 				OutputStreamWriter writer = new OutputStreamWriter(out, Charset.forName("UTF-8"));
 
-				template.merge(context, writer);
+				baseTemplate.merge(context, writer);
+
+				writer.flush();
+				writer.close();
+
+				System.out.println("Writing class: " + entity.getPackageName() + "." + entity.getIdentifier());
+				outputFile = new File(typePackageFolder, entity.getIdentifier() + "." + extension);
+				out = new FileOutputStream(outputFile);
+				writer = new OutputStreamWriter(out, Charset.forName("UTF-8"));
+
+				typeTemplate.merge(context, writer);
 
 				writer.flush();
 				writer.close();

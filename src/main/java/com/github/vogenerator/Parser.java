@@ -48,7 +48,12 @@ public class Parser extends BaseParser<Object> {
 
 	Rule MemberDeclaration() {
 		return Sequence(Optional(DocumentingComment()), Optional(FirstOf(Client(), Server())), PROPERTY,
-				Optional(ReadOnly()), ReferenceType(), Identifier(), Optional(DirectAssignment()), SEMICOLON);
+				Optional(ReadOnly()), ReferenceType(), Identifier(),
+				Optional(FirstOf(DirectAssignment(), MemberBinding())), SEMICOLON);
+	}
+
+	Rule MemberBinding() {
+		return Sequence(Bind(), Spacing(), Identifier(), Spacing());
 	}
 
 	Rule EnumBody() {
@@ -238,7 +243,7 @@ public class Parser extends BaseParser<Object> {
 	Rule Keyword() {
 		return Sequence(
 				FirstOf("server", "client", "property", "package", "class", "enum", "component", "readonly", "extends",
-						"super", "new"), TestNot(LetterOrDigit()));
+						"super", "new", "bind"), TestNot(LetterOrDigit()));
 	}
 
 	@DontLabel
@@ -255,6 +260,7 @@ public class Parser extends BaseParser<Object> {
 	public final Rule SUPER = Keyword("super");
 	public final Rule NEW = Keyword("new");
 	public final Rule SECURE = Keyword("secure");
+	public final Rule BIND = Keyword("bind");
 
 	// KeywordRules
 	Rule Server() {
@@ -275,6 +281,10 @@ public class Parser extends BaseParser<Object> {
 
 	Rule Secure() {
 		return Sequence("secure", Spacing());
+	}
+
+	Rule Bind() {
+		return Sequence("bind", Spacing());
 	}
 
 	// Symbols

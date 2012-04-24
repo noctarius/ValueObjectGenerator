@@ -10,6 +10,8 @@ public interface Type {
 
 	boolean isGeneric();
 
+	boolean isArray();
+	
 	String getGenericTypeId();
 
 }

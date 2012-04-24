@@ -28,6 +28,10 @@ public class TypeManager {
 			public boolean isGeneric() {
 				return false;
 			}
+			
+			public boolean isArray() {
+				return false;
+			}
 
 			public String getGenericTypeId() {
 				return null;
@@ -41,8 +45,19 @@ public class TypeManager {
 		}
 
 		String baseTypeId = typeId;
+		final String genericTypeId;
+		final String arrayType;
 		if (baseTypeId.contains("<")) {
 			baseTypeId = baseTypeId.substring(0, baseTypeId.indexOf("<"));
+			arrayType = null;
+			genericTypeId = typeId.substring(typeId.indexOf("<") + 1, typeId.length() - 1);
+		} else if (baseTypeId.contains("[")) {
+			baseTypeId = baseTypeId.substring(0, baseTypeId.indexOf("["));
+			arrayType = typeId.substring(typeId.indexOf("["), typeId.length());
+			genericTypeId = null;
+		} else {
+			arrayType = null;
+			genericTypeId = null;
 		}
 
 		final Type type = types.get(baseTypeId);
@@ -52,13 +67,16 @@ public class TypeManager {
 		}
 
 		if (!baseTypeId.equals(typeId)) {
-			final String genericTypeId = typeId.substring(typeId.indexOf("<") + 1, typeId.length() - 1);
 			return new Type() {
 
 				public boolean isGeneric() {
-					return true;
+					return genericTypeId != null;
 				}
 
+				public boolean isArray() {
+					return arrayType != null;
+				}
+				
 				public boolean isEnumType() {
 					return type.isEnumType();
 				}
